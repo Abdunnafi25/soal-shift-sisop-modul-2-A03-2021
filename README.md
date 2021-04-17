@@ -210,5 +210,102 @@ int main() {
 ## Penjelasn nomor 3 ##
 
 ****
-#### 3A.Membuat sebuah program C dimana setiap 40 detik membuat sebuah direktori dengan nama sesuai timestamp [YYYY-mm-dd_HH:ii:ss]
+Sebelum menjelaskan nomer 3, pertama-tama kami menggunkana template daemon yang sudah disediakan oleh asisten pada modul. Kemudian untuk algoritma caesar cypher sendiri, kami mengambil dari website dan ditambahkan sedikit modifikasi, linknya adalah 
+https://www.thecrazyprogrammer.com/2016/11/caesar-cipher-c-c-encryption-decryption.html
 
+#### 3A.Membuat sebuah program C dimana setiap 40 detik membuat sebuah direktori dengan nama sesuai timestamp [YYYY-mm-dd_HH:ii:ss]
+Berikut adalah sourcecodenya, pertaman kita harus mendapatkan waktu saat ini dan disimpan ke dalam array
+```
+char waktuSekarang[100];
+      time_t now = time(NULL);
+      struct tm *timeNow = localtime(&now);
+      char *platform = waktuSekarang;
+      strftime(waktuSekarang,sizeof(waktuSekarang)-1, "%Y-%m-%d_%H:%M:%S", timeNow);
+```
+
+Kemudian kita buat chilld yang nantinya menjadi daemon dan parent tidak menunggu child saat menjalankan proses berikutnya. Kita memberi nilai 40 pada proses sleep, agar proses berjalan setiap 40 detik sesuai keinginan soal
+```
+child_ID = fork();
+      if (child_ID < 0){
+          exit(EXIT_FAILURE);
+      }
+      if (child_ID ==0){
+          //buat folder (untuk nomer berikutnya)
+	  }
+sleep(40);
+```
+Buat child yang baru dan jalankan wait() untuk menunggu proses selesai
+```
+child_ID2 = fork();
+          if (child_ID2 < 0){
+              exit(EXIT_FAILURE);
+          }
+          if (child_ID2 == 0){
+              char *argv[] = {"makeDir", waktuSekarang, NULL};
+              execv("/bin/mkdir", argv); 
+          }
+        while(wait(&status) > 0);
+```
+#### 3B.Mengisi direktori yang sudah dibuat dengan 10 gambar yang didownload dari https://picsum.photos/, dimana setiap gambar akan didownload setiap 5 detik. Setiap gambar yang didownload akan diberi nama dengan format timestamp [YYYY-mm-dd_HH:ii:ss] dan gambar tersebut berbentuk persegi dengan ukuran (n%1000) + 50 pixel dimana n adalah detik Epoch Unix.
+
+Langkah pertama yaitu kita berpindah ke direktori sesuai timestamp, dan melakukan iterasi dari 1-10 (karena maksimal 10 gambar) dan berikan sleep(5) untuk jeda 5 detik tiap download. Jangan lupa juga jalankan fungsi wait()
+```
+chdir(waktuSekarang);
+        for(int i=1; i<= 10;i++){
+            time_t now2;
+            struct tm * timenow2;
+
+            time (&now2);
+            timenow2 = localtime(&now2);
+            char imgname[100];
+	        char link[100];
+            strftime(imgname, 100, "%Y-%m-%d_%H:%M:%S", timenow2);
+            sprintf(link , "https://picsum.photos/%ld", (now2 % 1000) + 50);
+            pid_t child_id_pic;
+            child_id_pic = fork();
+            if(child_id_pic<0)
+            {
+                exit(EXIT_FAILURE);
+            }
+            if(child_id_pic==0)
+            {
+                char *argv[]= {"wget", link, "-O", imgname, "-o", "/dev/null", NULL};
+                execv("/usr/bin/wget", argv);
+            }
+            sleep(5);
+        }
+        while(wait(&status2)>0);
+```
+
+Jangan lupa karena gambar harus berukuran (n%1000) + 50 px, dimana n adalah detik Epoch Unix, maka kita tambahkan metode ukuran gambar pada akhir kalimat untuk mendownload gambar. Lalu lakukan rename dengan timestamp saat ini.
+
+#### 3C.Melakukan enkripsi dengan metode Caesar Cypher ####
+Setelah direktori terisi 10 gambar, maka akan membuat file status.txt, dimana didalamnya berisi pesan "Download Success" yang terenkripsi dengan shift 5. Dilakukan dengan penggeseran 5 karakter dengan memperhatikan huruf kecil dan huruf besar serta dimodulo 26.
+```
+void cipherCrypt(char msg[], int key)
+{
+    for(int j = 0; msg[j] != '\0'; ++j)
+    {
+        char ch = msg[j];
+        if(ch >= 'a' && ch <= 'z')
+        {
+            ch = ch + key;
+            if(ch > 'z')
+            {
+                ch = ch - 'z' + 'a' - 1;
+            }
+            msg[j] = ch;
+        }
+
+        else if(ch >= 'A' && ch <= 'Z')
+        {
+            ch = ch + key;
+            if(ch > 'Z')
+            {
+                ch = ch - 'Z' + 'A' - 1;
+            }
+            msg[j] = ch;
+        }
+    }
+}
+```
