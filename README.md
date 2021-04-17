@@ -16,6 +16,44 @@ Anggota :
 ****
 ####  2A.  Mengextract zip yang diberikan ke dalam folder “/home/[user]/modul2/petshop” dan menhapus folder dan file yang tidak dibutuhkan
 ****
+Source Code :
+```
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <wait.h>
+
+int main() {
+  pid_t child_id;
+  int status;
+
+  child_id = fork();
+
+  if (child_id < 0) {
+   exit(EXIT_FAILURE);
+  }
+
+  if ( child_id == 0) {
+   //Mengestrak file ke folder /home/user/modul2/petshop
+   char *argv[] = {"unzip" ,"pets.zip" , "*.jpg","-d", "/home/abdunnafi25/modul2/petshop", NULL };
+   execv("/usr/bin/unzip",argv);
+  }
+  else {
+   while ((wait(&status)) > 0 );
+   //Menghapus file yang tidak dibutuhkan
+   char *argv[] = {"rm" , "pets.zip" , NULL };
+   execv("/bin/rm",argv);
+  }
+}
+
+```
+
+##### Penjelasan 2A.
+1. Pertama kita membuat fork baru yang disimpan dalam child_id 
+2. Setelah itu jika fork berhasil dibuat kita menggunakan perintah ```unzip``` untuk mengestrak filenya yang kita simpan di pointer argv
+3. Setelah proses selesai yaitu menghapus nya dengan code ```{"rm" , "pets.zip" , NULL };```
+
+
 ####  2B.  Membuat folder nama hewan sesuai kategori dalam folder petshop misal ```petshop/cat``` dan ```petshop/dog```
 ****
 ####  2C.  Memindahkan foto ke folder dengan kategori yang sesuai dan di rename dengan nama peliharaan. misal ```petshop/cat/joni.jpg```
