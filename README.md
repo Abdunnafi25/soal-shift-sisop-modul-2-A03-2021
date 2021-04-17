@@ -50,8 +50,10 @@ int main() {
 
 ##### Penjelasan 2A.
 1. Pertama kita membuat fork baru yang disimpan dalam child_id 
-2. Setelah itu jika fork berhasil dibuat kita menggunakan perintah ```unzip``` untuk mengestrak filenya yang kita simpan di pointer argv
-3. Setelah proses selesai yaitu menghapus nya dengan code ```{"rm" , "pets.zip" , NULL };```
+2. Setelah itu jika fork berhasil dibuat kita menggunakan perintah ```unzip``` untuk mengestrak filenya ke path /home/abdunnafi25/modul2/petshop 
+   yang kita simpan di pointer argv dengan menggunakan kode ```{"unzip" ,"pets.zip" , "*.jpg","-d", "/home/abdunnafi25/modul2/petshop", NULL };```
+   dimana ```-d``` untuk menunjukkan path yang akan dituju dan ```*.jpg``` hanya mengestrak file jpg saja
+4. Setelah proses selesai yaitu menghapus nya dengan code ```{"rm" , "pets.zip" , NULL };```
 
 
 ####  2B.  Membuat folder nama hewan sesuai kategori dalam folder petshop misal ```petshop/cat``` dan ```petshop/dog```
