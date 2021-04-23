@@ -154,57 +154,211 @@ Sama seperti problem E, di sini juga menggunakan struct tm di dalam kondisi else
 ****
 ####  2A.  Mengextract zip yang diberikan ke dalam folder “/home/[user]/modul2/petshop” dan menhapus folder dan file yang tidak dibutuhkan
 ****
-Source Code :
+
+#### Penjelasan sourcode umum
+1. Untuk mempermudah dan mempersingkat pembuatan fork kita buat fungsi ```eksekusi``` dimana di dalam terdapat pembuatan child proses 
 ```
-#include <stdlib.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <wait.h>
+void eksekusi(char perintah[],char *arg[]){
 
-int main() {
-  pid_t child_id;
-  int status;
+        int status;
+        pid_t child_id;
+        child_id=fork();
+        if(child_id==0){
+            printf("%s",perintah);
+            execv(perintah,arg);
+        }
+        else{
+           ((wait(&status))>0);
+        }
+}
 
-  child_id = fork();
+```
+2. Selain itu terdapat fungsi cut yang membantu untuk menghapus string index ke 4
 
-  if (child_id < 0) {
-   exit(EXIT_FAILURE);
-  }
+```
+char* cut(char *arr){
+        int n,i;
+        char* cuts; 
+        for(i=0;arr[i]!='\0';i++);
+           n=i-4+1;
 
-  if ( child_id == 0) {
-   //Mengestrak file ke folder /home/user/modul2/petshop
-   char *argv[] = {"unzip" ,"pets.zip" , "*.jpg","-d", "/home/abdunnafi25/modul2/petshop", NULL };
-   execv("/usr/bin/unzip",argv);
-  }
-  else {
-   while ((wait(&status)) > 0 );
-   //Menghapus file yang tidak dibutuhkan
-   char *argv[] = {"rm" , "pets.zip" , NULL };
-   execv("/bin/rm",argv);
-  }
+        if(n<1) return NULL;
+
+        cuts=(char*)malloc(n*sizeof(char));
+
+        for(i=0;i<n-1;i++)
+        cuts[i]=arr[i];
+        cuts[i]='\0';
+        return cuts;
 }
 
 ```
 
-##### Penjelasan 2A.
-1. Pertama kita membuat fork baru yang disimpan dalam child_id 
-2. Setelah itu jika fork berhasil dibuat kita menggunakan perintah ```unzip``` untuk mengestrak filenya ke path /home/abdunnafi25/modul2/petshop 
-   yang kita simpan di pointer argv dengan menggunakan kode ```{"unzip" ,"pets.zip" , "*.jpg","-d", "/home/abdunnafi25/modul2/petshop", NULL };```
-   dimana ```-d``` untuk menunjukkan path yang akan dituju dan ```*.jpg``` hanya mengestrak file jpg saja
-4. Setelah proses selesai yaitu menghapus nya dengan code ```{"rm" , "pets.zip" , NULL };```
+#### 2A. Mengestrak File zip ke folder /home/user/modul2/petshop dan menghapus file yang tidak penting
+****
+Untuk pertama tama di dalam fungsi main kita buat kan folder /home/user/modul/petshop dengan perintah fork yang telah kita buat
+seperti berikut :
+```
+ //membuat folder untuk menyimpan ekstrak
+        char *argv[]={"mkdir","-p","/home/abdunnafi25/modul2/petshop",NULL};
+        eksekusi("/bin/mkdir",argv);
+```
+
+Setelah selesai membuat kita unzip file pets.zip ke folder tersbut dengan kode seperti berikut.
+```
+char *argv2[]={"unzip","-q","pets.zip","-d","/home/abdunnafi25/modul2/petshop",NULL};
+        execv("/usr/bin/unzip",argv2);
+        }
+```
+
+setelah semua file di unzip selanjutnya kita pindah direktory dengan code sebagai berikut :
+```
+DIR *dir=opendir("/home/abdunnafi25/modul2/petshop");
+```
+
+Setelah berhasil pindah direktory selanjutnya kita membuat struct dengan variabel ```dent``` yang bertipe ```dirent```
+setelah selesai selanjutnya mengecek apakah di dalam direktori ada file jika ada maka eksekusi.
+dengan kode sebagai berikut :
+```
+struct dirent *dent;
+        if(dir!=NULL){
+        while((dent=readdir(dir))!=NULL)
+```
+
+jika ada file di dalam direktori maka kita cek file dengan membandingkan string dengan menggunakan fungsi ```strcmp``` jika file mengandung ```.``` atau ```..```
+maka continue dengan code sebagai berikut.
+```
+if(strcmp(dent->d_name,".")==0 || strcmp(dent->d_name,"..")==0) continue; 
+```
+Selanjutnya kita menghapus file dengan menggunakan execv ```/bin/rm``` dengan code sebagai berikut.
+
+```
+else if(dent->d_type==DT_DIR){
+                        char fileName[100]="/home/abdunnafi25/modul2/petshop/";
+                        //Menggabungkan folder dengan file yang tidak penting
+                        strcat(fileName,dent->d_name);
+                        //Menghapus file tidak penting
+                        char *argv[]={"rm","-rf",fileName,NULL};
+                        eksekusi("/bin/rm",argv);
+                        exit(EXIT_SUCCESS); 
+                }
+```
+
+
 
 
 ####  2B.  Membuat folder nama hewan sesuai kategori dalam folder petshop misal ```petshop/cat``` dan ```petshop/dog```
 ****
-####  2C.  Memindahkan foto ke folder dengan kategori yang sesuai dan di rename dengan nama peliharaan. misal ```petshop/cat/joni.jpg```
-****
-####  2D.  Memindahkan ke masing-masing kategori yang sesuai. Contoh: foto dengan nama ```dog;baro;1_cat;joni;2.jp``` dipindah ke folder    ```/petshop/cat/joni.jpg” dan “/petshop/dog/baro.jp```.
+Untuk no 2B pertama kita ambil string yang menjadi nama file sebagai nama pembuatan nama folder.
 
+1. Pertama kita memakai fungsi cut yang telah kita buat untuk menghapus index ke 4 yaitu ".jpg" dan disimpan dalam pointer cuts dengan code sebagai berikut
+```
+char *cutss=cut(dent->d_name);
+```
+2. Setelah yang tersimpan hanya ```jenis```, ```nama``` , dan ```umur``` maka selanjutnya kita looping semua nama file dan pisahkan string dengan menggunankan fungsi ```strtok``` dengan pemisah looping pertama adalah ```_``` untuk gambar yang mengandung 2 hewan
+selanjutnya kita pisahkan string lagi dengan pemisah ```;``` yang menjadi pemisah antara jenis, nama dan umur dan disimpan dalam variabel photo
+
+3. Jika sudah terpisah maka untuk index-0 yaitu yang menyimpan ```jenis hewan``` kita buatkan folder baru sesuai nama hewan.
+dan kita sediakan char file untuk membuat path ```/home/user/modul2/petshop```
+dan kita expand dengan menggunakan fungsi ```strcat``` dengan variabel file. seperti code berikut :
+```
+while(photo=strtok_r(ph,";",&ph)){
+                                if(i==0){
+                                //buat folder sesuai nama pets
+                                char files[80]="/home/abdunnafi25/modul2/petshop/";
+                                strcat(files,photo);
+                                char *argv[]={"mkdir","-p",files,NULL};
+                                eksekusi("/bin/mkdir",argv);
+                                strcpy(pet,photo);
+                                }
+```
+
+5. Selanjutnya untuk index-1 kita menyimpan nama hewan ke array ```pName```
+6. Selanjutnya untuk index-2 kita menyimpan umur hewan ke array ```pAge```
+sebagai contoh code berikut:
+
+```
+if(i==1){
+  //Mengcopy isi dari arrat photo ke array  nama pets
+  strcpy(pName,photo);
+}
+if(i==2){
+   //Mencopy isi index 3 ke umurnya pets
+   strcpy(pAge,photo);
+ }
+ i++;
+                        
+```
+
+####  2C dan D.  Memindahkan foto ke folder dengan kategori yang sesuai dan di rename dengan nama peliharaan. misal ```petshop/cat/joni.jpg``` Memindahkan ke masing-masing kategori yang sesuai. Contoh: foto dengan nama ```dog;baro;1_cat;joni;2.jp``` dipindah ke folder    ```/petshop/cat/joni.jpg” dan “/petshop/dog/baro.jp```.
 ****
+1. Selanjutnya untuk memindahkan gambar yang telah di ekstrak ke file masing masing maka kita harus membuat string fileku yang merupakan copy dari string   "/home/user/modul2/petshop/" 
+2. setelah variabel fileku tersimpan nama path selanjutnya kita expand dengan d_name file
+dengan code sebagai berikut :
+```
+while((wait(NULL))>0);
+                        char fileku[80];
+                        strcpy(fileku,"/home/abdunnafi25/modul2/petshop/");
+                        strcat(fileku,dent->d_name);
+```
+dimana char fileku disimpan untuk mencopy file nya ke masing masing folder
+
+3. Selanjut kita membuat file destination untuk mencopy file gambar ke masing 2 folder dengan menggunakan fungsi ```strcpy``` dan ```strcat``` dan menggunakan fork dengan code sebagai berikut 
+
+```
+char dest[80];
+                        strcpy(dest,"/home/abdunnafi25/modul2/petshop/");
+                        strcat(dest,pet);
+                        strcat(dest,"/");
+                        strcat(dest,pName);
+                        strcat(dest,".jpg");
+                        char *argv[]={"cp",fileku,dest,NULL};
+                        eksekusi("/bin/cp",argv);
+```
 ####  2E.  Di setiap folder buatlah sebuah file "keterangan.txt" yang berisi nama dan umur semua peliharaan dalam folder tersebut.
 
 ****
+Setelah semua file masuk selanjutnya membuat file keterangan.txt disetiap folder dengan code sebagai berikut.
+```
+ //keterangan.txt di masing2 folder pets
+                        char file[50];
+                        strcpy(file,"/home/abdunnafi25/modul2/petshop/");
+                        strcat(file,pet);
+                        strcat(file,"/keterangan.txt");
 
+                        //isi file keterangan.txt
+                        char ch[50];
+                        strcat(ch,"nama : ");
+                        strcat(ch,pName);
+                        strcat(ch,"\numur: ");
+                        strcat(ch,pAge);
+                        strcat(ch,"tahun\n\n");
+```
+
+dimana kita menyimpan nya dalam array ch untuk isi dari keterangan.
+
+Selanjutnya kita membuka file keterangan dengan kode sebagai berikut
+```
+ //buat keterangan.txt
+                        FILE *fp;
+                        fp=fopen(file,"a");
+                        fputs(ch,fp);
+                        fclose(fp);
+```
+dimana ```fopen``` untuk membuka file yang berisi ``` /home/user/modul2/petshop/jenispat/keterangan.txt ```keterangan "a" itu merupakan argumen untuk memasukan string ke dalam file keterangan.txt
+dan fungsi fput untuk memindah string yang berada pada array ```ch``` disimpan dalam file fp
+lalu kita tutup file dengan fungsi ```fclose```
+
+Untuk yang terakhir dikarenakan masih ada gambar yang belum terhapus di folder petshop maka kita hapus semua folder dengan menggunakan code sebagai berikut :
+
+```
+ char hapus[60]="/home/abdunnafi25/modul2/petshop/";
+        strcat(hapus,dent->d_name);
+        char *args[]={"rm",hapus,NULL};
+        execv("/bin/rm",args);
+```
+
+Lalu setelah terhapus kita tutup directory dengan fungsi ```closedir(dir);```
 
 
 ## Penjelasn nomor 3 ##
