@@ -361,105 +361,219 @@ Untuk yang terakhir dikarenakan masih ada gambar yang belum terhapus di folder p
 Lalu setelah terhapus kita tutup directory dengan fungsi ```closedir(dir);```
 
 
-## Penjelasn nomor 3 ##
+## Penjelasan nomor 3 ##
 
 ****
 Sebelum menjelaskan nomer 3, pertama-tama kami menggunkana template daemon yang sudah disediakan oleh asisten pada modul. Kemudian untuk algoritma caesar cypher sendiri, kami mengambil dari website dan ditambahkan sedikit modifikasi, linknya adalah 
 https://www.thecrazyprogrammer.com/2016/11/caesar-cipher-c-c-encryption-decryption.html
 
 #### 3A.Membuat sebuah program C dimana setiap 40 detik membuat sebuah direktori dengan nama sesuai timestamp [YYYY-mm-dd_HH:ii:ss]
-Berikut adalah sourcecodenya, pertaman kita harus mendapatkan waktu saat ini dan disimpan ke dalam array
-```
-char waktuSekarang[100];
-      time_t now = time(NULL);
-      struct tm *timeNow = localtime(&now);
-      char *platform = waktuSekarang;
-      strftime(waktuSekarang,sizeof(waktuSekarang)-1, "%Y-%m-%d_%H:%M:%S", timeNow);
-```
 
-Kemudian kita buat chilld yang nantinya menjadi daemon dan parent tidak menunggu child saat menjalankan proses berikutnya. Kita memberi nilai 40 pada proses sleep, agar proses berjalan setiap 40 detik sesuai keinginan soal
+Soal diminta untuk membuat program C berupa daemon yang akan berjalan setiap 40 detik dan melakukan `fork()` untuk melakukan `mkdir` dengan format nama sesuai perintah soal
 ```
-child_ID = fork();
-      if (child_ID < 0){
-          exit(EXIT_FAILURE);
-      }
-      if (child_ID ==0){
-          //buat folder (untuk nomer berikutnya)
-	  }
+time_t rawtime = time(NULL);
+struct tm *timeinfo;
+char buffer[80];
+
+timeinfo = localtime(&rawtime);
+strftime(buffer, 80, "%Y-%m-%d_%X", timeinfo);
+```
+- Pertama kita buat variabel `rawtime` untuk menyimpan timestamp dalam format **Unix epoch**, variabel timeinfo untuk timestamp yang sudah sesuai dengan localtime, dan variabel buffer sebagai buffer dari string hasil format variabel timeinfo. 
+- Kemudian formatting waktu `tm` menjadi sting sesuai dengan format permintaan soal  [YYYY-mm-dd_HH:ii:ss] ke dalam buffer buffer sebesar 80. Di sini menggunakan fungsi `strftime`.  
+
+Setelah itu, proses akan di-`fork` dan child proses melakukan `execv()` terhadap perintah `mkdir` dengan argumen buffer. Parent process langsung sleep setelah 40 detik.
+```
+pid_t child_id, child_id2, child_id3, child_id4;
+child_id = fork();
+
+// Child process 1
+if (child_id == 0) {
+     char *argv[] = {"mkdir", buffer, NULL};
+     execv("/bin/mkdir", argv);
+}
+
+...
+
 sleep(40);
 ```
-Buat child yang baru dan jalankan wait() untuk menunggu proses selesai
-```
-child_ID2 = fork();
-          if (child_ID2 < 0){
-              exit(EXIT_FAILURE);
-          }
-          if (child_ID2 == 0){
-              char *argv[] = {"makeDir", waktuSekarang, NULL};
-              execv("/bin/mkdir", argv); 
-          }
-        while(wait(&status) > 0);
-```
+
 #### 3B.Mengisi direktori yang sudah dibuat dengan 10 gambar yang didownload dari https://picsum.photos/, dimana setiap gambar akan didownload setiap 5 detik. Setiap gambar yang didownload akan diberi nama dengan format timestamp [YYYY-mm-dd_HH:ii:ss] dan gambar tersebut berbentuk persegi dengan ukuran (n%1000) + 50 pixel dimana n adalah detik Epoch Unix.
 
-Langkah pertama yaitu kita berpindah ke direktori sesuai timestamp, dan melakukan iterasi dari 1-10 (karena maksimal 10 gambar) dan berikan sleep(5) untuk jeda 5 detik tiap download. Jangan lupa juga jalankan fungsi wait()
+Dari masing-masing folder , program akan kembali melakukan fork yang child process-nya akan loop sebanyak 10 kali, per loop akan melakukan fork kembali untuk mengunduh file. Kemudian, atur ukuran piksel sesuai yang diminta pada soal dan setelah itu, loop akan sleep selama 5 detik.
 ```
-chdir(waktuSekarang);
-        for(int i=1; i<= 10;i++){
-            time_t now2;
-            struct tm * timenow2;
+child_id2 = fork();
 
-            time (&now2);
-            timenow2 = localtime(&now2);
-            char imgname[100];
-	        char link[100];
-            strftime(imgname, 100, "%Y-%m-%d_%H:%M:%S", timenow2);
-            sprintf(link , "https://picsum.photos/%ld", (now2 % 1000) + 50);
-            pid_t child_id_pic;
-            child_id_pic = fork();
-            if(child_id_pic<0)
-            {
-                exit(EXIT_FAILURE);
-            }
-            if(child_id_pic==0)
-            {
-                char *argv[]= {"wget", link, "-O", imgname, "-o", "/dev/null", NULL};
-                execv("/usr/bin/wget", argv);
-            }
-            sleep(5);
-        }
-        while(wait(&status2)>0);
-```
-
-Jangan lupa karena gambar harus berukuran (n%1000) + 50 px, dimana n adalah detik Epoch Unix, maka kita tambahkan metode ukuran gambar pada akhir kalimat untuk mendownload gambar. Lalu lakukan rename dengan timestamp saat ini.
-
-#### 3C.Melakukan enkripsi dengan metode Caesar Cypher ####
-Setelah direktori terisi 10 gambar, maka akan membuat file status.txt, dimana didalamnya berisi pesan "Download Success" yang terenkripsi dengan shift 5. Dilakukan dengan penggeseran 5 karakter dengan memperhatikan huruf kecil dan huruf besar serta dimodulo 26.
-```
-void cipherCrypt(char msg[], int key)
-{
-    for(int j = 0; msg[j] != '\0'; ++j)
-    {
-        char ch = msg[j];
-        if(ch >= 'a' && ch <= 'z')
-        {
-            ch = ch + key;
-            if(ch > 'z')
-            {
-                ch = ch - 'z' + 'a' - 1;
-            }
-            msg[j] = ch;
-        }
-
-        else if(ch >= 'A' && ch <= 'Z')
-        {
-            ch = ch + key;
-            if(ch > 'Z')
-            {
-                ch = ch - 'Z' + 'A' - 1;
-            }
-            msg[j] = ch;
-        }
-    }
+// Child process 2
+if (child_id2 == 0) {
+     for (int i = 0; i < 10; i++) {
+  
+     . . .
+  
+     sleep(5);
+     
+     }
 }
 ```
+Child akan mengunduh 10 gambar setelah direktori dibuat. Tapi, program utamanya tidak akan menunggu child process-nya (mengunduh gambar) dan langsung sleep selama 40 detik. Pada masing-masing loop akan dibuat child process yang masing-masing mengunduh gambar dari picsum photos menggunakan `wget`.
+
+```
+child_id3 = fork();
+              
+// Child process 3
+if (child_id3 == 0) {
+     char buffer2[80], location[160], link[80];
+     rawtime = time(NULL);
+
+     timeinfo = localtime(&rawtime);
+     strftime(buffer2, 80, "%Y-%m-%d_%X", timeinfo);
+
+     sprintf(location, "%s/%s", buffer, buffer2);
+     sprintf(link, "https://picsum.photos/%ld", ((rawtime % 1000) + 50));
+
+     char *argv[] = {"wget", "-q", "-O", location, link, NULL};
+     execv("/bin/wget", argv);
+}
+```
+- Variabel rawtime digunakan untuk mengambil Unix epoch
+- Variabel timeinfo untuk timestamp baru sesuai dengan localtime.
+- Variabel buffer2 untuk menyimpan waktu yang sudah diformat menjadi string, diformat menggunakan strftime() berdasarkan nilai timeinfo yang baru
+- variabel location untuk menyimpan lokasi output dari wget
+- variabel link untuk menyimpan alamat tempat mengunduh gambar dari picsum photos. Link akan diformat sesuai dengan permintaan soal, yaitu ((rawtime % 1000) + 50), untuk mendapatkan foto dengan ukuran piksel tersebut
+
+#### 3C.Melakukan enkripsi dengan metode Caesar Cypher, zip dan hapus direktori awal ####
+
+Pada bagian ini, setelah selesai loop untuk mengunduh 10 gambar, program akan  membuat sebuah file status.txt yang berisi enkripsi "Download Success" dengan teknik Caesar Cipher shift 5. 
+```
+while (wait(NULL) > 0);
+
+child_id4 = fork();
+
+// Child process 4
+if (child_id4 == 0) {
+     char message[80] = "Download Success", file_name[160];
+
+     for (int j = 0; j < strlen(message); j++) {
+         if (message[j] >= 'a' && message[j] <= 'z') {
+             message[j] += 5;
+
+             if (message[j] > 'z') {
+                 message[j] = message[j] - 'z' + 'a' - 1;
+             }
+         }
+
+         else if (message[j] >= 'A' && message[j] <= 'Z') {
+             message[j] += 5;
+
+             if (message[j] > 'Z') {
+                 message[j] = message[j] - 'Z' + 'A' - 1;
+             }
+         }
+     }
+
+     sprintf(file_name, "%s/%s", buffer, "status.txt");
+     FILE *txt = fopen(file_name, "w");
+
+     fputs(message, txt);
+     fclose(txt);
+
+    . . .
+}
+```
+- Variabel message untuk menyimpan "Download Success" yang akan dienkripsi dan
+- variabel file_name menyimpan hasil enkripsi Caesar Cipher.
+- sprintf pertama untuk menulis string dengan format buffer/status.txt ke variabel file_name.
+- fopen digunakan untuk membuka file yang diinginkan, menggunakan command W untuk membuat file baru dan melakukan proses writing.
+- fputs digunakan untuk menyimpan string message ke dalam txt.
+- fclose digunakan untuk menutup koneksi dari txt.
+
+Selanjutnya, program akan melakukan execv dengan perintah zip. Parent process akan menunggu sampai seluruh unduhan wget selesai. Terakhir, menghapus direktori folder yang telah di-zip.
+
+```
+if (child_id4 == 0) {
+       
+     . . .
+
+     sprintf(file_name, "%s.zip", buffer);
+
+     char *argv[] = {"zip", "-r", file_name, buffer, NULL};
+     execv("/bin/zip", argv);
+}
+
+while (wait(NULL) != child_id4);
+          
+char *argv[] = {"rm", "-r", buffer, NULL};
+execv("/bin/rm", argv);
+```
+- Command zip -r digunakan agar zip direktori dilakukan secara rekursif 
+- -q agar output log dari command tidak dicetak. 
+- Command remove -r agar melakukan proses remove secara rekursif juga.
+
+#### 3D.Membuat program Killer dari Bash yang executable, setelah itu dihapus setelah dijalankan ####
+
+Men-generate program "Killer" dengan file bernama `Killer.sh` dan penginputannya melalui program C yang telah dibuat.
+
+```
+FILE *killer_prog = fopen("killer.sh", "w");
+```
+- killer_prog sebagai pointer ke file.
+- fopen digunakan untuk membuka file yang diinginkan, menggunakan command W untuk membuat file baru dan melakukan proses writing.
+
+Lalu, file killer.sh diinputkan dengan string untuk melakukan proses `killall` sesuai dengan Session ID dari program utama. Setelah itu, program "Killer" akan menghapus dirinya sendiri.
+
+```
+char *inputan = ""
+"#!/bin/bash\n"
+"killall -9 ./soal3\n"
+"rm $0\n";
+fprintf(killer_prog, inputan, sid);
+```
+
+fork() dijalankan sehingga child process akan melakukan `killall` dan parent process akan menunggu child process melakukan `rm`. String di-write ke dalam killer_prog dengan fungsi `fprintf()`.
+
+#### 3D.Membuat mode-x dan -z pada program yang dijalankan ####
+
+Menambahkan parameter pada `main()` untuk menerima argumen. Mengecek argumen yang diinputkan pada terminal. Jika argumen -z akan langsung menghentikan semua operasi program utama, jika argumen -x hanya akan terminasi parent process, sedangkan child process akan ditunggu hingga selesai.
+
+```
+int main(int argc, char *argv[]) {
+  
+     // Jika banyaknya argumen salah
+     if (argc != 2) {
+         printf("ERROR! Argumen salah!\n");
+         return 1;
+     }
+
+     // Jika argumen yang dimasukkan salah
+     if (strcmp(argv[1], "-z") != 0 && strcmp(argv[1], "-x") != 0) {
+         printf("ERROR! Mode salah!\n");
+         return 1;
+     }
+  
+  . . .
+  
+}
+```
+
+Banyaknya argumen akan dicek, sedangkan argv[1] juga akan dicek apakah sesuai dengan mode yang ada dan akan mengeluarkan output yang berbeda.
+
+Lalu, menggunakan fungsi `strcmp` untuk membandingkan argumen dengan input di dalam pengondisian. Untuk argumen `-z` akan menggunakan perintah `killall -9 ./soal3` dan argumen -x akan menggunakan perintah `kill getpid()` 
+
+```
+if (strcmp(argv[1], "-z") == 0) {
+    char *inputan = ""
+    "#!/bin/bash\n"
+    "killall -9 ./soal3\n"
+    "rm $0\n";
+    fprintf(killer_prog, inputan, sid);
+}
+
+else if (strcmp(argv[1], "-x") == 0) {
+    char *inputan = ""
+    "#!/bin/bash\n"
+    "kill %d\n"
+    "rm $0\n";
+    fprintf(killer_prog, inputan, getpid());
+}
+```
+
+Masing-masing mode akan di-write pada `killer_prog` dengan input yang telah dimasukkan melalui terminal. Terakhir, program Killer.sh akan di-bash dan me-remove dirinya sendiri.
