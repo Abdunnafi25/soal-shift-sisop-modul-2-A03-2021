@@ -146,6 +146,12 @@ else if((tmp->tm_mday == 9) && (tmp->tm_mon == 3)&& (tmp->tm_hour == 22 )&& (tmp
 #### Penjelasan
 Sama seperti problem E, di sini juga menggunakan struct tm di dalam kondisi else if (setelah if problem E) pada saat waktu ultah stevany, lalu kita menjalankan fungsi boxing, yakni untuk memindahkan dan menzip folder (Musyik, Fylm, Pyoto) ke dalam Lopyu_Stevany.zip. Lalu menjalankan fungsi hapus untuk menghapus folder sisa extract (MUSIK, FOTO, FILM).
 
+### Kendala nomer 1
+1. Sempat setak geming pada karena daemon tidak berjalan di background
+2. Wget sempat broken, mendownload 0 bytes saja.
+3. Sempat tidak bisa mengubah waktu system.
+4. Kesalahpahaman terhadap format time pada struct tm.
+5. pusing
 
 ****
 
